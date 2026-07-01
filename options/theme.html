@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NamiKarotter Customizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+  <style>
+    html, body {
+      background-color: transparent !important;
+      color-scheme: normal !important;
+    }
+    body {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    body.preload * {
+      transition: none !important;
+    }
+  </style>
+</head>
+<body class="preload">
+  <div class="app-container">
+    <!-- Tabs Navigation -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="themes-tab">テーマ</button>
+      <button class="tab-btn" data-tab="fonts-tab">フォント</button>
+      <button class="tab-btn" data-tab="wallpaper-tab" id="wallpaper-tab-btn">壁紙</button>
+      <button class="tab-btn" data-tab="custom-tab" id="custom-tab-btn">カスタム</button>
+    </nav>
+
+    <!-- Content Sections -->
+    <main class="tabs-content">
+      
+      <!-- Theme Selector Tab -->
+      <section id="themes-tab" class="tab-panel active">
+        <div class="backup-actions">
+          <button id="btn-export-theme" class="backup-btn">
+            <span style="display: inline-block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url('../svgicons/upload.svg') no-repeat center / contain; mask: url('../svgicons/upload.svg') no-repeat center / contain;"></span>
+            テーマを書き出す
+          </button>
+          <button id="btn-import-theme" class="backup-btn">
+            <span style="display: inline-block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url('../svgicons/download.svg') no-repeat center / contain; mask: url('../svgicons/download.svg') no-repeat center / contain;"></span>
+            テーマを読み込む
+          </button>
+          <input type="file" id="file-import-theme" accept=".json" style="display: none;">
+        </div>
+
+        <div class="section-title">汎用テーマ</div>
+        <div class="themes-grid" id="generic-themes-grid">
+          <!-- Light, Dark, Custom -->
+        </div>
+        <div class="section-title" style="margin-top: 18px;">プリセットテーマ</div>
+        <div class="themes-grid" id="preset-themes-grid">
+          <!-- Sepia, Nord, Forest, Sakura, and 30 new presets -->
+        </div>
+      </section>
+
+      <!-- Font Selector Tab -->
+      <section id="fonts-tab" class="tab-panel">
+        <div class="form-group">
+          <label for="font-select">フォントファミリー</label>
+          <div class="select-wrapper">
+            <select id="font-select">
+              <option value="">(デフォルトフォント)</option>
+              <option value="custom-uploaded">アップロードしたフォント</option>
+              <!-- Populated from google-fonts-jp.json -->
+            </select>
+          </div>
+          <div style="font-size: 11px; color: var(--pop-text-muted); margin-top: 6px; line-height: 1.4;">
+            ※ Google Fonts を使用するため、フォントを適用するとフォントデータ取得のために Google にアクセス情報が送信される可能性があります。
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 18px;">
+          <label>またはカスタムフォントをアップロード</label>
+          <div class="wallpaper-upload-zone" id="font-upload-zone" style="padding: 12px; border-style: dashed; margin-top: 6px;">
+            <div class="upload-text" style="font-size: 11px;">クリックまたはドラッグでアップロード</div>
+            <div class="upload-hint" style="font-size: 10px;">TTF, OTF, WOFF, WOFF2</div>
+            <input type="file" id="file-font" accept=".ttf,.otf,.woff,.woff2" style="display: none;">
+          </div>
+          <div class="upload-filename-display" id="lbl-font-filename" style="margin-top: 4px; font-size: 11px;">ファイル名: 未選択</div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-label">プレビュー</div>
+          <div class="preview-text" id="font-preview">
+            カロッターの表示が変わります。<br>
+            A B C D E F G H I J K L M N O P Q R S T U V W X Y Z<br>
+            あいうえお かきくけこ さしすせそ たちつてと
+          </div>
+        </div>
+      </section>
+
+      <!-- Wallpaper Tab -->
+      <section id="wallpaper-tab" class="tab-panel">
+        <div class="form-group">
+          <div class="switch-label-container">
+            <span>壁紙モードを有効化</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-wallpaper-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+
+        <div id="wallpaper-settings-group" class="disabled-group">
+          <!-- Wallpaper Preview -->
+          <div class="form-group" id="wallpaper-preview-group" style="display: none; margin-top: 14px;">
+            <label>設定中の壁紙プレビュー</label>
+            <div class="wallpaper-preview-container" style="width: 100%; height: 100px; border-radius: var(--radius-md); border: 1px solid var(--pop-border); overflow: hidden; background-color: var(--pop-bg); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">
+              <img id="img-wallpaper-preview" src="" style="width: 100%; height: 100%; object-fit: cover;" alt="壁紙プレビュー">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <label>壁紙画像のアップロード</label>
+            <div class="wallpaper-upload-zone" id="upload-zone">
+              <div class="upload-text">クリックまたはドラッグでアップロード</div>
+              <div class="upload-hint">PNG, JPEG, WebP (推奨)</div>
+              <input type="file" id="file-wallpaper" accept="image/*" style="display: none;">
+            </div>
+            <div class="upload-filename-display" id="lbl-wallpaper-filename">ファイル名: 未選択</div>
+          </div>
+
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="txt-wallpaper-url">または画像URLを入力</label>
+            <input type="text" id="txt-wallpaper-url" placeholder="https://example.com/image.jpg" style="width: 100%; text-align: left; font-family: var(--font-sans); font-size: 13px; padding: 10px 12px; border: 1px solid var(--pop-border); border-radius: var(--radius-md); outline: none; background-color: var(--pop-surface); color: var(--pop-text);">
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <div class="range-info">
+              <label for="rng-wallpaper-opacity">透明度 (要素の透過度)</label>
+              <span id="val-wallpaper-opacity">60%</span>
+            </div>
+            <input type="range" id="rng-wallpaper-opacity" min="0" max="100" value="60" class="range-slider">
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <div class="range-info">
+              <label for="rng-wallpaper-blur">ぼかしの強度</label>
+              <span id="val-wallpaper-blur">5px</span>
+            </div>
+            <input type="range" id="rng-wallpaper-blur" min="0" max="30" value="5" class="range-slider">
+          </div>
+        </div>
+      </section>
+
+      <!-- Custom Colors Tab -->
+      <section id="custom-tab" class="tab-panel">
+        <div class="custom-warning" id="custom-inactive-warning">
+          <span>カスタムテーマを編集するには、「テーマ」タブで<strong>カスタム</strong>テーマを選択してください。</span>
+        </div>
+        
+        <div class="custom-inputs-container disabled" id="custom-inputs-container">
+          <div class="section-title">作成モード</div>
+          
+          <div class="segmented-control">
+            <button class="control-btn active" id="btn-mode-manual" data-mode="manual">マニュアル</button>
+            <button class="control-btn" id="btn-mode-auto" data-mode="auto">一色から自動生成</button>
+          </div>
+
+          <!-- Auto-Generate Mode Settings -->
+          <div class="auto-settings-panel" id="auto-settings-panel" style="display: none;">
+            <div class="section-title">自動生成設定</div>
+            
+            <div class="color-picker-item">
+              <div class="color-info">
+                <span class="color-name">ベースカラー</span>
+                <span class="color-variable">テーマの基調となる色</span>
+              </div>
+              <div class="color-input-wrapper">
+                <input type="color" id="picker-base-color" value="#1d9bf0">
+                <input type="text" id="text-base-color" value="#1d9bf0" maxlength="7">
+              </div>
+            </div>
+
+            <div class="style-selector-item">
+              <span class="color-name">スタイル</span>
+              <div class="style-segmented-control">
+                <button class="control-btn active" id="btn-style-light" data-style="light">ライト</button>
+                <button class="control-btn" id="btn-style-soft" data-style="soft">ソフト</button>
+                <button class="control-btn" id="btn-style-dim" data-style="dim">ディム</button>
+                <button class="control-btn" id="btn-style-dark" data-style="dark">ダーク</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manual Mode Colors -->
+          <div class="manual-settings-panel" id="manual-settings-panel">
+            <div class="section-title">各カラー個別調整</div>
+            
+            <div class="color-picker-item">
+              <div class="color-info">
+                <span class="color-name">背景色</span>
+                <span class="color-variable">--app-bg</span>
+              </div>
+              <div class="color-input-wrapper">
+                <input type="color" id="picker-app-bg" value="#eef3f8">
+                <input type="text" id="text-app-bg" value="#eef3f8" maxlength="7">
+              </div>
+            </div>
+
+            <div class="color-picker-item">
+              <div class="color-info">
+                <span class="color-name">カード背景</span>
+                <span class="color-variable">--surface-card</span>
+              </div>
+              <div class="color-input-wrapper">
+                <input type="color" id="picker-surface-card" value="#ffffff">
+                <input type="text" id="text-surface-card" value="#ffffff" maxlength="7">
+              </div>
+            </div>
+
+            <div class="color-picker-item">
+              <div class="color-info">
+                <span class="color-name">テキスト (主要)</span>
+                <span class="color-variable">--text-primary</span>
+              </div>
+              <div class="color-input-wrapper">
+                <input type="color" id="picker-text-primary" value="#102132">
+                <input type="text" id="text-text-primary" value="#102132" maxlength="7">
+              </div>
+            </div>
+
+            <div class="color-picker-item">
+              <div class="color-info">
+                <span class="color-name">アクセントカラー</span>
+                <span class="color-variable">--accent</span>
+              </div>
+              <div class="color-input-wrapper">
+                <input type="color" id="picker-accent" value="#1d9bf0">
+                <input type="text" id="text-accent" value="#1d9bf0" maxlength="7">
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Load Scripts -->
+  <script src="../shared/themes.js"></script>
+  <script src="color-utils.js"></script>
+  <script src="theme.js"></script>
+</body>
+</html>

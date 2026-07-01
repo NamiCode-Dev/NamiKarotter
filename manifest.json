@@ -1,0 +1,91 @@
+{
+  "manifest_version": 3,
+  "name": "NamiKarotter",
+  "version": "0.2",
+  "description": "Karotterのカラーテーマやフォント、壁紙のカスタムに加え、要素非表示、高度な検索、サイドバー折りたたみ、メディア保存などの便利機能を追加するカスタマイズ拡張機能。",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "downloads"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_ui": {
+    "page": "options/extensions.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://karotter.com/*",
+        "https://*.karotter.com/*",
+        "https://karotter.jp/*",
+        "https://*.karotter.jp/*",
+        "https://karotter.karon.jp/*",
+        "https://*.karotter.karon.jp/*",
+        "https://apikarotter.karon.jp/*",
+        "https://*.apikarotter.karon.jp/*"
+      ],
+      "js": [
+        "shared/themes.js",
+        "content/css-builder.js",
+        "content/katex.min.js",
+        "content/observers.js",
+        "content/style-renderer.js",
+        "content/menu-injector.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://x.com/intent/post*",
+        "https://x.com/intent/tweet*",
+        "https://*.x.com/intent/post*",
+        "https://*.x.com/intent/tweet*",
+        "https://twitter.com/intent/post*",
+        "https://twitter.com/intent/tweet*",
+        "https://*.twitter.com/intent/post*",
+        "https://*.twitter.com/intent/tweet*"
+      ],
+      "js": [
+        "content/x-redirect.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "options/*",
+        "shared/*",
+        "data/*",
+        "svgicons/*"
+      ],
+      "matches": [
+        "https://karotter.com/*",
+        "https://*.karotter.com/*",
+        "https://karotter.jp/*",
+        "https://*.karotter.jp/*",
+        "https://karotter.karon.jp/*",
+        "https://*.karotter.karon.jp/*",
+        "https://apikarotter.karon.jp/*",
+        "https://*.apikarotter.karon.jp/*"
+      ]
+    }
+  ]
+}

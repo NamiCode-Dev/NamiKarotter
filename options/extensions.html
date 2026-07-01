@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NamiKarotter Plugins</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+  <style>
+    html, body {
+      background-color: transparent !important;
+      color-scheme: normal !important;
+    }
+    body {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    body.preload * {
+      transition: none !important;
+    }
+  </style>
+</head>
+<body class="preload">
+  <div class="app-container">
+    <!-- Tabs Navigation -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="all">すべて</button>
+      <button class="tab-btn" data-tab="appearance">外観・デザイン</button>
+      <button class="tab-btn" data-tab="utility">機能・便利</button>
+    </nav>
+
+    <!-- Content Sections -->
+    <main class="tabs-content" style="padding: 20px;">
+      
+      <!-- カスタムテーマ Plugin (飾り / 常時有効) -->
+      <div class="plugin-card" data-category="appearance" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">カスタムテーマ</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">カロッターの配色やフォント、壁紙を自由にカスタマイズします（組み込み機能のため、オフにできません）</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0; opacity: 0.65; cursor: not-allowed;">
+              <input type="checkbox" checked disabled>
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- UIを非表示 Plugin -->
+      <div class="plugin-card" data-category="appearance" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">UIを非表示</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">特定の画面要素を非表示にします</div>
+              <button id="btn-toggle-hide-ui-options" style="background: none; border: none; padding: 2px 0; color: var(--pop-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; margin-top: 6px; transition: color 0.2s ease; outline: none;">
+                <span id="txt-toggle-hide-ui-options">オプションを表示</span>
+                <svg id="svg-toggle-hide-ui-options" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-hide-ui-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sub-options -->
+        <div id="hide-ui-options" style="margin-top: 16px; border-top: 1px solid var(--pop-border); padding-top: 14px; display: none; flex-direction: column; gap: 12px;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「QRを表示」ボタン</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-qr">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+          
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「プロフィールURLをコピー」ボタン</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-copy-url">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「認証済みマーク」</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-verified">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「BOTアカウントバッジ」</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-bot">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「パロディアカウントバッジ」</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-parody">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「コンテンツ表記バッジ」</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-badge-pill">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">「Kawaii Logo」</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-hide-kawaii-logo">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 高度な検索機能 Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">高度な検索機能</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">検索バーに詳細条件を指定できる高度な検索ボタンを追加します</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-advanced-search-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 通知フィルターの改良 Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">通知フィルターの改良</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">通知画面の上部フィルター（すべて、いいね等）を、テーマに沿ったセレクトボックス（ドロップダウン）形式に差し替えます。</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-notification-filter-select-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- シンプルなURLプレビュー Plugin -->
+      <div class="plugin-card" data-category="appearance" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">シンプルなURLプレビュー</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">URLカードの見た目をシンプルにし、タイトル等のテキストを画像に重ねて表示します</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-simple-url-preview-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Proスタイルを無効 Plugin -->
+      <div class="plugin-card" data-category="appearance" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">Proスタイルを無効</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">Proユーザーの左ボーダーや背景グラデーションなどの特別装飾を無効化し、通常のスタイルに戻します</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-disable-pro-style-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- サイドバーの折りたたみ Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">サイドバーの折りたたみ</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">サイドバーのセクションを折りたためるようにします</div>
+              <button id="btn-toggle-collapse-sidebar-options" style="background: none; border: none; padding: 2px 0; color: var(--pop-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; margin-top: 6px; transition: color 0.2s ease; outline: none;">
+                <span id="txt-toggle-collapse-sidebar-options">オプションを表示</span>
+                <svg id="svg-toggle-collapse-sidebar-options" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-collapse-sidebar-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sub-options -->
+        <div id="collapse-sidebar-options" style="margin-top: 16px; border-top: 1px solid var(--pop-border); padding-top: 14px; display: none; flex-direction: column; gap: 12px;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">トレンドを初期状態で折りたたむ</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-collapse-default-trends">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">知り合いが参加中のスペースを初期状態で折りたたむ</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-collapse-default-spaces">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">おすすめユーザーを初期状態で折りたたむ</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-collapse-default-users">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">法務・お問い合わせを初期状態で折りたたむ</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-collapse-default-legal">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 画像ダウンローダー Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">画像ダウンローダー</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">投稿画像の右下にダウンロードボタンを表示し、ワンクリックで保存できるようにします</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-image-downloader-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ボイスダウンローダー Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">ボイスダウンローダー</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">ボイス再生バーにダウンロードボタンを表示し、音声ファイルをワンクリックで保存できるようにします</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-voice-downloader-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- マークダウン入力補助 Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">マークダウン入力補助</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">投稿フォームの下に入力補助用のツールバー（KaTeX、太字、斜体、リンク、コードブロック、表、KaTeX文字色）を表示します。</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-markdown-assistant-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 投稿プレビュー Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">投稿プレビュー</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">カロート（投稿）ボタンの左側にプレビューボタンを追加し、投稿前にレンダリング結果を確認できるようにします。</div>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-post-preview-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- X投稿リダイレクト Plugin -->
+      <div class="plugin-card" data-category="utility" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">X投稿リダイレクト</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">x.com の投稿画面にアクセスした際、自動的にKarotterの投稿画面にリダイレクトします。「診断メーカー」などからのシェア時に便利です。</div>
+              <button id="btn-toggle-x-redirect-options" style="background: none; border: none; padding: 2px 0; color: var(--pop-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; margin-top: 6px; transition: color 0.2s ease; outline: none;">
+                <span id="txt-toggle-x-redirect-options">オプションを表示</span>
+                <svg id="svg-toggle-x-redirect-options" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-x-redirect-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sub-options -->
+        <div id="x-redirect-options" style="margin-top: 16px; border-top: 1px solid var(--pop-border); padding-top: 14px; display: none; flex-direction: column; gap: 12px;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--pop-text-secondary); font-weight: 500;">リダイレクト前に確認する</span>
+            <label class="switch">
+              <input type="checkbox" id="chk-x-redirect-ask">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- カスタムCSS Plugin -->
+      <div class="plugin-card" data-category="appearance" style="background: var(--pop-surface); border: 1px solid var(--pop-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); transition: var(--transition-normal);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <div class="switch-label-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: 600; font-size: 15px; color: var(--pop-text);">カスタムCSS</div>
+              <div style="font-size: 12px; color: var(--pop-text-muted); margin-top: 2px;">独自のCSSスタイルを注入してカロッターのデザインをカスタマイズします</div>
+              <button id="btn-toggle-custom-css-options" style="background: none; border: none; padding: 2px 0; color: var(--pop-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; margin-top: 6px; transition: color 0.2s ease; outline: none;">
+                <span id="txt-toggle-custom-css-options">オプションを表示</span>
+                <svg id="svg-toggle-custom-css-options" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+            <label class="switch" style="margin-top: 4px; flex-shrink: 0;">
+              <input type="checkbox" id="chk-plugin-custom-css-enable">
+              <span class="slider-switch round"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sub-options (Textarea) -->
+        <div id="custom-css-options" style="margin-top: 16px; border-top: 1px solid var(--pop-border); padding-top: 14px; display: none; flex-direction: column; gap: 8px;">
+          <label for="txt-plugin-custom-css" style="font-size: 12px; color: var(--pop-text-secondary); font-weight: 600;">カスタムCSSコード</label>
+          <textarea id="txt-plugin-custom-css" placeholder="/* ここにCSSを記述します */&#10;body {&#10;  /* font-size: 15px !important; */&#10;}" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; padding: 8px 10px; border: 1px solid var(--pop-border); border-radius: var(--radius-md); background-color: var(--pop-surface); color: var(--pop-text); resize: vertical; outline: none; transition: border-color 0.2s ease;"></textarea>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Load Scripts -->
+  <script src="../shared/themes.js"></script>
+  <script src="extensions.js"></script>
+</body>
+</html>
