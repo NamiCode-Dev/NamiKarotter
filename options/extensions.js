@@ -151,6 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const chkHideParody = document.getElementById('chk-hide-parody');
   const chkHideBadgePill = document.getElementById('chk-hide-badge-pill');
   const chkHideKawaiiLogo = document.getElementById('chk-hide-kawaii-logo');
+  const chkHideLogo = document.getElementById('chk-hide-logo');
+  const chkPluginImproveHomeEnable = document.getElementById('chk-plugin-improve-home-enable');
   const chkPluginAdvancedSearchEnable = document.getElementById('chk-plugin-advanced-search-enable');
   const chkPluginNotificationFilterSelectEnable = document.getElementById('chk-plugin-notification-filter-select-enable');
   const chkPluginSimpleUrlPreviewEnable = document.getElementById('chk-plugin-simple-url-preview-enable');
@@ -160,6 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const chkPluginVoiceDownloaderEnable = document.getElementById('chk-plugin-voice-downloader-enable');
   const chkPluginMarkdownAssistantEnable = document.getElementById('chk-plugin-markdown-assistant-enable');
   const chkPluginPostPreviewEnable = document.getElementById('chk-plugin-post-preview-enable');
+  const chkPluginKarotterTLineEnable = document.getElementById('chk-plugin-karotter-tline-enable');
+  const chkPluginKbotAssistantEnable = document.getElementById('chk-plugin-kbot-assistant-enable');
   const chkPluginXRedirectEnable = document.getElementById('chk-plugin-x-redirect-enable');
   const chkXRedirectAsk = document.getElementById('chk-x-redirect-ask');
   const xRedirectOptions = document.getElementById('x-redirect-options');
@@ -198,6 +202,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'pluginHideParody',
       'pluginHideBadgePill',
       'pluginHideKawaiiLogo',
+      'pluginHideLogo',
+      'pluginImproveHomeEnable',
       'pluginAdvancedSearchEnable',
       'pluginSimpleUrlPreviewEnable',
       'pluginDisableProStyleEnable',
@@ -210,6 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'pluginVoiceDownloaderEnable',
       'pluginMarkdownAssistantEnable',
       'pluginPostPreviewEnable',
+      'pluginKarotterTLineEnable',
+      'pluginKbotAssistantEnable',
       'pluginCustomCssEnable',
       'pluginCustomCss',
       'pluginXRedirectEnable',
@@ -232,6 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chkHideParody.checked = hideParody;
       chkHideBadgePill.checked = data.pluginHideBadgePill || false;
       chkHideKawaiiLogo.checked = data.pluginHideKawaiiLogo || false;
+      chkHideLogo.checked = data.pluginHideLogo || false;
+      chkPluginImproveHomeEnable.checked = data.pluginImproveHomeEnable !== false;
       chkPluginAdvancedSearchEnable.checked = data.pluginAdvancedSearchEnable !== false;
       chkPluginSimpleUrlPreviewEnable.checked = data.pluginSimpleUrlPreviewEnable !== false;
       chkPluginDisableProStyleEnable.checked = data.pluginDisableProStyleEnable || false;
@@ -240,6 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chkPluginVoiceDownloaderEnable.checked = data.pluginVoiceDownloaderEnable !== false;
       chkPluginMarkdownAssistantEnable.checked = data.pluginMarkdownAssistantEnable !== false;
       chkPluginPostPreviewEnable.checked = data.pluginPostPreviewEnable !== false;
+      chkPluginKarotterTLineEnable.checked = data.pluginKarotterTLineEnable !== false;
+      chkPluginKbotAssistantEnable.checked = data.pluginKbotAssistantEnable !== false;
       chkPluginXRedirectEnable.checked = data.pluginXRedirectEnable || false;
       chkXRedirectAsk.checked = data.pluginXRedirectAsk !== false;
       chkPluginNotificationFilterSelectEnable.checked = data.pluginNotificationFilterSelectEnable !== false;
@@ -331,6 +343,15 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set({ pluginHideKawaiiLogo: e.target.checked });
   });
 
+  chkHideLogo.addEventListener('change', (e) => {
+    chrome.storage.local.set({ pluginHideLogo: e.target.checked });
+  });
+
+
+  chkPluginImproveHomeEnable.addEventListener('change', (e) => {
+    chrome.storage.local.set({ pluginImproveHomeEnable: e.target.checked });
+  });
+
   chkPluginNotificationFilterSelectEnable.addEventListener('change', (e) => {
     chrome.storage.local.set({ pluginNotificationFilterSelectEnable: e.target.checked });
   });
@@ -381,6 +402,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   chkPluginPostPreviewEnable.addEventListener('change', (e) => {
     chrome.storage.local.set({ pluginPostPreviewEnable: e.target.checked });
+  });
+
+  chkPluginKarotterTLineEnable.addEventListener('change', (e) => {
+    chrome.storage.local.set({ pluginKarotterTLineEnable: e.target.checked });
+  });
+
+  chkPluginKbotAssistantEnable.addEventListener('change', (e) => {
+    chrome.storage.local.set({ pluginKbotAssistantEnable: e.target.checked });
   });
 
   chkPluginXRedirectEnable.addEventListener('change', (e) => {

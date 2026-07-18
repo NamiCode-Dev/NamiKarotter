@@ -23,6 +23,7 @@
       'pluginHideParody',
       'pluginHideBadgePill',
       'pluginHideKawaiiLogo',
+      'pluginHideLogo',
       'pluginSimpleUrlPreviewEnable',
       'pluginCollapseSidebarEnable',
       'pluginCollapseDefaultTrends',
@@ -33,6 +34,7 @@
       'pluginVoiceDownloaderEnable',
       'pluginMarkdownAssistantEnable',
       'pluginPostPreviewEnable',
+      'pluginKbotAssistantEnable',
       'pluginCustomCssEnable',
       'pluginCustomCss',
       'pluginDisableProStyleEnable'
@@ -64,12 +66,13 @@
       const hideParody = hideUiEnable && (data.pluginHideParody || false);
       const hideBadgePill = hideUiEnable && (data.pluginHideBadgePill || false);
       const hideKawaiiLogo = hideUiEnable && (data.pluginHideKawaiiLogo || false);
+      const hideLogo = hideUiEnable && (data.pluginHideLogo || false);
 
       const disableProStyle = data.pluginDisableProStyleEnable || false;
 
       // Call NamiCSSBuilder to apply styles
       if (window.NamiCSSBuilder && typeof window.NamiCSSBuilder.applyStyles === 'function') {
-        window.NamiCSSBuilder.applyStyles(theme, customColors, font, wallpaper, extensions, customFontUrl, hideVerified, hideBot, hideParody, disableProStyle, hideBadgePill, hideKawaiiLogo);
+        window.NamiCSSBuilder.applyStyles(theme, customColors, font, wallpaper, extensions, customFontUrl, hideVerified, hideBot, hideParody, disableProStyle, hideBadgePill, hideKawaiiLogo, hideLogo);
       }
 
       // Call NamiObservers to start page monitoring observers
@@ -105,6 +108,15 @@
         const postPreviewEnable = data.pluginPostPreviewEnable !== false;
         if (typeof window.NamiObservers.startPostPreview === 'function') {
           window.NamiObservers.startPostPreview(postPreviewEnable);
+        }
+
+        const kbotAssistantEnable = data.pluginKbotAssistantEnable !== false;
+        if (typeof window.NamiObservers.startKbotAssistant === 'function') {
+          window.NamiObservers.startKbotAssistant(kbotAssistantEnable);
+        }
+
+        if (typeof window.NamiObservers.startSurfaceShadowObserver === 'function') {
+          window.NamiObservers.startSurfaceShadowObserver();
         }
       }
 

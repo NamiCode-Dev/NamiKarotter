@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NamiKarotter",
-  "version": "0.2",
+  "version": "0.2.2",
   "description": "Karotterのカラーテーマやフォント、壁紙のカスタムに加え、要素非表示、高度な検索、サイドバー折りたたみ、メディア保存などの便利機能を追加するカスタマイズ拡張機能。",
   "permissions": [
     "storage",
@@ -30,6 +30,23 @@
     "open_in_tab": true
   },
   "content_scripts": [
+    {
+      "matches": [
+        "https://karotter.com/*",
+        "https://*.karotter.com/*",
+        "https://karotter.jp/*",
+        "https://*.karotter.jp/*",
+        "https://karotter.karon.jp/*",
+        "https://*.karotter.karon.jp/*",
+        "https://apikarotter.karon.jp/*",
+        "https://*.apikarotter.karon.jp/*"
+      ],
+      "js": [
+        "content/main-world-copy-interceptor.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
       "matches": [
         "https://karotter.com/*",

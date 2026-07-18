@@ -7,6 +7,18 @@
   const DEFAULT_FONT_STACK = '"Noto Sans JP", "Inter", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", sans-serif';
   let navCheckTimer = null;
   let navGlobalListenersReady = false;
+  let cachedImproveHomeEnable = true;
+  let lastClickedPostId = '';
+
+  window.addEventListener('namikarotter-captured-post-id', (e) => {
+    if (e.detail && e.detail.id) {
+      lastClickedPostId = e.detail.id;
+    }
+  });
+
+  chrome.storage.local.get(['pluginImproveHomeEnable'], (data) => {
+    cachedImproveHomeEnable = data.pluginImproveHomeEnable !== false;
+  });
 
   function injectMenuStyles() {
     if (document.getElementById(MENU_STYLE_ID)) return;
@@ -478,7 +490,7 @@
  <div style="display:flex; flex:1; align-items:center; justify-content:center; padding:24px; text-align:center; color:var(--text-secondary, #475569); line-height:1.7;">
    <div>
      <div style="margin-bottom:8px; font-weight:700; color:var(--text-primary, #0f172a); font-size:16px;">NamiKarotter</div>
-     <div style="font-size:13px; margin-bottom:16px;">バージョン 0.2</div>
+     <div style="font-size:13px; margin-bottom:16px;">バージョン 0.2.2</div>
      <div style="font-weight:600; font-size:13px; color:var(--text-primary, #0f172a); margin-bottom:4px;">開発者: NamiCode (Developer)</div>
      <div class="dev-links">
        <a href="https://github.com/NamiCode-Dev" target="_blank" rel="noopener noreferrer">GitHub</a> &nbsp;·&nbsp;
@@ -495,7 +507,8 @@
     chrome.storage.local.get(['pluginAdvancedSearchEnable'], (data) => {
       const isEnabled = data.pluginAdvancedSearchEnable !== false;
       
-      const inputs = document.querySelectorAll('input[placeholder*="検索"], input[placeholder*="search"], input[placeholder*="Search"]');
+      const inputs = Array.from(document.querySelectorAll('input[placeholder*="検索"], input[placeholder*="search"], input[placeholder*="Search"]'))
+        .filter(input => input.placeholder !== 'ユーザーネームで検索' && !input.placeholder.includes('ユーザーネームで検索'));
       
       if (!isEnabled) {
         document.querySelectorAll('.namikarotter-adv-search-btn').forEach(btn => btn.remove());
@@ -977,16 +990,389 @@
     });
   }
 
+  function findSharePopups() {
+    const popups = [];
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+      if (btn.textContent.trim().includes('埋め込みHTML')) {
+        const parent = btn.parentElement;
+        if (parent && parent.tagName === 'DIV' && (parent.classList.contains('fixed') || window.getComputedStyle(parent).position === 'fixed')) {
+          if (!popups.includes(parent)) {
+            popups.push(parent);
+          }
+        }
+      }
+    });
+    return popups;
+  }
+
+  function injectKarotterTLineButton() {
+    chrome.storage.local.get(['pluginKarotterTLineEnable'], (data) => {
+      const isEnabled = data.pluginKarotterTLineEnable !== false;
+      const popups = findSharePopups();
+
+      if (!isEnabled) {
+        popups.forEach(popup => {
+          const btn = popup.querySelector('[data-namikarotter-tline="true"]');
+          if (btn) btn.remove();
+        });
+        return;
+      }
+
+      popups.forEach(popup => {
+        if (popup.querySelector('[data-namikarotter-tline="true"]')) {
+          return;
+        }
+
+        const buttons = Array.from(popup.querySelectorAll('button'));
+        const embedBtn = buttons.find(btn => btn.textContent.trim().includes('埋め込みHTML'));
+        if (!embedBtn) return;
+
+        const clonedBtn = embedBtn.cloneNode(true);
+        clonedBtn.setAttribute('data-namikarotter-tline', 'true');
+
+        // Extract SVG icon, clear text, append icon and " KarotterTLine" text node
+        const svg = clonedBtn.querySelector('svg');
+        clonedBtn.innerHTML = '';
+        if (svg) {
+          clonedBtn.appendChild(svg);
+        }
+        clonedBtn.appendChild(document.createTextNode(' KarotterTLine'));
+
+        clonedBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleKarotterTLineClick(popup);
+        });
+
+        // Insert immediately after "埋め込みHTML" button
+        embedBtn.parentNode.insertBefore(clonedBtn, embedBtn.nextSibling);
+      });
+    });
+  }
+
+  function handleKarotterTLineClick(popup) {
+    chrome.storage.local.get(['pluginKarotterTLineAgreed'], (data) => {
+      const isAgreed = data.pluginKarotterTLineAgreed === true;
+
+      const proceedWithEmbed = () => {
+        if (lastClickedPostId) {
+          showKarotterTLineModal(lastClickedPostId);
+        } else {
+          // Fallback: check window location URL
+          const locMatch = window.location.href.match(/\/(?:status|post|getpost)\/(\d+)/) || window.location.href.match(/\/(\d+)$/);
+          if (locMatch) {
+            showKarotterTLineModal(locMatch[1]);
+          } else {
+            alert('投稿IDを取得できませんでした。詳細ページから試してください。');
+          }
+        }
+      };
+
+      if (isAgreed) {
+        proceedWithEmbed();
+      } else {
+        showKarotterTLineDisclaimerModal(proceedWithEmbed);
+      }
+    });
+  }
+
+  function showKarotterTLineDisclaimerModal(onAgree) {
+    const modalId = 'namikarotter-tline-disclaimer-modal';
+    let modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+
+    if (!document.getElementById('namikarotter-modal-animation')) {
+      const animStyle = document.createElement('style');
+      animStyle.id = 'namikarotter-modal-animation';
+      animStyle.textContent = `
+        @keyframes namikarotter-fade-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes namikarotter-fade-out {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(0.96); }
+        }
+        @keyframes namikarotter-backdrop-fade-in {
+          from { background: rgba(15, 23, 42, 0); backdrop-filter: blur(0px); }
+          to { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+        }
+        @keyframes namikarotter-backdrop-fade-out {
+          from { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+          to { background: rgba(15, 23, 42, 0); backdrop-filter: blur(0px); }
+        }
+        .namikarotter-modal-closing {
+          animation: namikarotter-backdrop-fade-out 0.2s ease-in forwards !important;
+        }
+        .namikarotter-modal-closing > div {
+          animation: namikarotter-fade-out 0.2s ease-in forwards !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(animStyle);
+    }
+
+    modal = document.createElement('div');
+    modal.id = modalId;
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483647;
+      font-family: var(--font-sans, ${DEFAULT_FONT_STACK});
+      padding: 20px;
+      box-sizing: border-box;
+      animation: namikarotter-backdrop-fade-in 0.2s ease-out;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: var(--surface-card, #ffffff);
+      color: var(--text-primary, #0f172a);
+      width: 100%;
+      max-width: 440px;
+      border-radius: 16px;
+      border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22));
+      box-shadow: var(--surface-shadow, 0 20px 25px -5px rgba(0, 0, 0, 0.15));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: namikarotter-fade-in 0.2s ease-out;
+    `;
+
+    content.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-soft, rgba(148, 163, 184, 0.15)); background: var(--surface-soft, rgba(148, 163, 184, 0.04));">
+        <span style="font-weight: 700; font-size: 15px; color: var(--text-primary);">免責事項とご利用確認</span>
+        <button type="button" class="namikarotter-modal-close" style="background: none; border: none; font-size: 20px; font-weight: 700; color: var(--text-muted, #64748b); cursor: pointer; padding: 4px; line-height: 1; outline: none; transition: color 0.15s ease; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;">
+          &times;
+        </button>
+      </div>
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px; background: var(--surface-card); font-size: 13.5px; line-height: 1.6;">
+        <div style="font-weight: 600; color: var(--text-primary);">KarotterTLine 埋め込み機能の利用確認</div>
+        
+        <div style="color: var(--text-secondary); display: flex; flex-direction: column; gap: 10px;">
+          <p style="margin: 0;">
+            KarotterTLineは、<a href="https://karotter.com/profile/nekoch18" target="_blank" rel="noopener noreferrer" style="color: var(--accent, #3b82f6); text-decoration: underline; font-weight: 600;">@nekoch18</a> 氏によって作成されたKarotterの非公式サービスです。本機能は、KarotterTLineを非公式に利用して投稿を埋め込みます。
+          </p>
+          <p style="margin: 0; font-weight: 600; color: var(--text-primary);">
+            ※埋め込みをする前に毎回、あらかじめ提供元サイト（<a href="https://karott.nekoch18.net/" target="_blank" rel="noopener noreferrer" style="color: var(--accent, #3b82f6); text-decoration: underline; font-weight: 600;">karott.nekoch18.net</a>）のサービス免責事項等をよく確認してください。
+          </p>
+        </div>
+
+        <div style="margin-top: 6px; border-top: 1px solid var(--border-soft, rgba(148, 163, 184, 0.15)); padding-top: 14px; display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="namikarotter-cancel-btn" style="background: transparent; border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.28)); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: background-color 150ms ease; outline: none;">
+            キャンセル
+          </button>
+          <button type="button" class="namikarotter-agree-btn" style="background: var(--accent, #3b82f6); border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; color: #ffffff; cursor: pointer; transition: background-color 150ms ease; outline: none;">
+            同意して利用する
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    let isClosing = false;
+    const closeModal = () => {
+      if (isClosing) return;
+      isClosing = true;
+      modal.classList.add('namikarotter-modal-closing');
+      setTimeout(() => {
+        modal.remove();
+      }, 200);
+    };
+
+    content.querySelector('.namikarotter-modal-close').addEventListener('click', closeModal);
+    content.querySelector('.namikarotter-cancel-btn').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    const agreeBtn = content.querySelector('.namikarotter-agree-btn');
+    agreeBtn.addEventListener('click', () => {
+      chrome.storage.local.set({ pluginKarotterTLineAgreed: true }, () => {
+        closeModal();
+        if (typeof onAgree === 'function') {
+          onAgree();
+        }
+      });
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+  }
+
+  function showKarotterTLineModal(postId) {
+    const modalId = 'namikarotter-tline-modal';
+    let modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+
+    if (!document.getElementById('namikarotter-modal-animation')) {
+      const animStyle = document.createElement('style');
+      animStyle.id = 'namikarotter-modal-animation';
+      animStyle.textContent = `
+        @keyframes namikarotter-fade-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes namikarotter-fade-out {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(0.96); }
+        }
+        @keyframes namikarotter-backdrop-fade-in {
+          from { background: rgba(15, 23, 42, 0); backdrop-filter: blur(0px); }
+          to { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+        }
+        @keyframes namikarotter-backdrop-fade-out {
+          from { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+          to { background: rgba(15, 23, 42, 0); backdrop-filter: blur(0px); }
+        }
+        .namikarotter-modal-closing {
+          animation: namikarotter-backdrop-fade-out 0.2s ease-in forwards !important;
+        }
+        .namikarotter-modal-closing > div {
+          animation: namikarotter-fade-out 0.2s ease-in forwards !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(animStyle);
+    }
+
+    modal = document.createElement('div');
+    modal.id = modalId;
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483647;
+      font-family: var(--font-sans, ${DEFAULT_FONT_STACK});
+      padding: 20px;
+      box-sizing: border-box;
+      animation: namikarotter-backdrop-fade-in 0.2s ease-out;
+    `;
+
+    const embedHtml = `<ktt-widget src="https://karott.nekoch18.net/getpost/${postId}" title="post" scrolling="no" width="400"></ktt-widget> <script src="https://karott.nekoch18.net/v2/karotterline.js"></script>`;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: var(--surface-card, #ffffff);
+      color: var(--text-primary, #0f172a);
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      border-radius: 16px;
+      border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22));
+      box-shadow: var(--surface-shadow, 0 20px 25px -5px rgba(0, 0, 0, 0.15));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: namikarotter-fade-in 0.2s ease-out;
+    `;
+
+    content.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-soft, rgba(148, 163, 184, 0.15)); background: var(--surface-soft, rgba(148, 163, 184, 0.04));">
+        <span style="font-weight: 700; font-size: 15px; color: var(--text-primary);">KarotterTLine 埋め込み</span>
+        <button type="button" class="namikarotter-modal-close" style="background: none; border: none; font-size: 20px; font-weight: 700; color: var(--text-muted, #64748b); cursor: pointer; padding: 4px; line-height: 1; outline: none; transition: color 0.15s ease; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;">
+          &times;
+        </button>
+      </div>
+      <div style="padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; background: var(--surface-card);">
+        
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">埋め込みコード</label>
+          <div style="position: relative; display: flex; flex-direction: column; gap: 8px;">
+            <textarea readonly style="width: 100%; height: 80px; font-family: monospace; font-size: 12px; padding: 8px 10px; border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); border-radius: 8px; background-color: var(--surface-soft, rgba(148, 163, 184, 0.04)); color: var(--text-primary); resize: none; outline: none; box-sizing: border-box;">${embedHtml}</textarea>
+            <button type="button" class="namikarotter-copy-code-btn" style="align-self: flex-end; background: var(--accent, #3b82f6); color: #ffffff; border: none; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background-color 150ms ease; outline: none;">
+              コピー
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center;">
+          <label style="align-self: flex-start; display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">プレビュー</label>
+          <div style="width: 100%; display: flex; justify-content: center; background: var(--surface-soft, rgba(148, 163, 184, 0.02)); border: 1px dashed var(--border-soft, rgba(148, 163, 184, 0.22)); border-radius: 12px; padding: 16px; box-sizing: border-box; overflow: auto;">
+            <iframe src="https://karott.nekoch18.net/getpost/${postId}" style="border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 400px; height: 220px; max-width: 100%; background: var(--surface-card, #ffffff);" scrolling="no"></iframe>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    let isClosing = false;
+    const closeModal = () => {
+      if (isClosing) return;
+      isClosing = true;
+      modal.classList.add('namikarotter-modal-closing');
+      setTimeout(() => {
+        modal.remove();
+      }, 200);
+    };
+
+    content.querySelector('.namikarotter-modal-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    const copyBtn = content.querySelector('.namikarotter-copy-code-btn');
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(embedHtml).then(() => {
+        const origText = copyBtn.textContent;
+        copyBtn.textContent = 'コピー完了';
+        copyBtn.style.backgroundColor = '#4ade80';
+        setTimeout(() => {
+          copyBtn.textContent = origText;
+          copyBtn.style.backgroundColor = '';
+        }, 1500);
+      });
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+  }
+
   function startNamiNavigationWatcher() {
     if (navCheckTimer) return;
 
     ensureNamiNavItems();
     injectAdvancedSearchButton();
     injectNotificationFilter();
+    improveHomeUI();
+    injectKarotterTLineButton();
     navCheckTimer = window.setInterval(() => {
       ensureNamiNavItems();
       injectAdvancedSearchButton();
       injectNotificationFilter();
+      improveHomeUI();
+      injectKarotterTLineButton();
     }, NAV_CHECK_INTERVAL_MS);
   }
 
@@ -999,8 +1385,647 @@
       if ('pluginNotificationFilterSelectEnable' in changes) {
         injectNotificationFilter();
       }
+      if ('pluginKarotterTLineEnable' in changes) {
+        injectKarotterTLineButton();
+      }
+      if ('pluginImproveHomeEnable' in changes) {
+        cachedImproveHomeEnable = changes.pluginImproveHomeEnable.newValue !== false;
+        if (!cachedImproveHomeEnable) {
+          restoreOriginalHomeUI();
+        } else {
+          improveHomeUI();
+        }
+      }
     }
   });
 
+  function showUpdatePopup(version) {
+    const popupId = 'namikarotter-update-popup';
+    if (document.getElementById(popupId)) return;
+
+    const popup = document.createElement('div');
+    popup.id = popupId;
+    popup.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: ${DEFAULT_FONT_STACK};
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 240ms ease;
+    `;
+
+    popup.innerHTML = `
+      <style>
+        #namikarotter-update-popup-content::-webkit-scrollbar {
+          width: 6px !important;
+        }
+        #namikarotter-update-popup-content::-webkit-scrollbar-track {
+          background: transparent !important;
+        }
+        #namikarotter-update-popup-content::-webkit-scrollbar-thumb {
+          background: var(--border-soft, rgba(148, 163, 184, 0.3)) !important;
+          border-radius: 9999px !important;
+        }
+        #namikarotter-update-popup-content::-webkit-scrollbar-thumb:hover {
+          background: var(--text-muted, rgba(148, 163, 184, 0.5)) !important;
+        }
+      </style>
+      <div class="namikarotter-update-backdrop" style="
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.38);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        transition: opacity 240ms ease;
+      "></div>
+      <div class="namikarotter-update-panel" style="
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: min(440px, calc(100vw - 32px));
+        max-height: min(500px, calc(100vh - 32px));
+        background: var(--surface-card, #ffffff);
+        border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.28));
+        border-radius: 1.4rem;
+        box-shadow: var(--surface-shadow, 0 24px 70px rgba(15, 23, 42, 0.24));
+        transform: scale(0.96) translateY(8px);
+        transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+        overflow: hidden;
+        color: var(--text-primary, #0f172a);
+      ">
+        <!-- Header -->
+        <div style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 54px;
+          padding: 10px 18px;
+          border-bottom: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22));
+          background: var(--surface-card, #ffffff);
+        ">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary);">NamiKarotter アップデート情報 (v${version})</h2>
+        </div>
+
+        <!-- Content -->
+        <div id="namikarotter-update-popup-content" style="
+          padding: 20px 24px;
+          overflow-y: auto;
+          max-height: 350px;
+          scrollbar-width: thin !important;
+          scrollbar-color: var(--border-soft, rgba(148, 163, 184, 0.3)) transparent !important;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          background: var(--surface-card, #ffffff);
+          line-height: 1.6;
+        ">
+          <div>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・KarotterTLine 埋め込み機能</h4>
+            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
+              ポストの共有メニューに「KarotterTLine」ボタンを追加し、ウィジェット埋め込みコードのコピー機能と、実際のウィジェット表示を確認できるライブプレビュー（初回のみ確認用ダイアログ表示）を提供します。
+            </p>
+          </div>
+
+          <div>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・kbotアシスタント プラグイン</h4>
+            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
+              投稿ポップアップに「@kbot」コマンドの入力支援機能を追加しました。VS比較、指定範囲順位（バリデーション機能付き）、期間ランキングを簡単に挿入できます。
+            </p>
+          </div>
+
+
+          <div>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・ホームのヘッダー・タブを改良</h4>
+            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
+              ホーム画面の複雑な大・中・小カテゴリタブを、スッキリと階層的で使いやすいモダンなUIに自動で置き換える機能を追加しました。
+            </p>
+          </div>
+
+          <div>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・要素非表示プラグインの拡張</h4>
+            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
+              特定の画面要素の非表示設定に「ロゴ（alt="Karotter"）」の非表示項目を追加しました。
+            </p>
+          </div>
+
+          <div>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・20個のシンプルなテーマプリセット</h4>
+            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
+              落ち着きのあるミニマルなデザインをベースにした、美しいシンプル系テーマプリセットを新たに20種類追加しました。
+            </p>
+          </div>
+
+          <div>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・高度な検索機能の改善</h4>
+            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
+              「ユーザーネームで検索」など、個人の検索エリア等に誤って高度な検索ボタンが挿入されないよう最適化しました。
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="
+          padding: 12px 24px;
+          border-top: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22));
+          display: flex;
+          justify-content: flex-end;
+          background: var(--surface-soft, rgba(148, 163, 184, 0.04));
+        ">
+          <button id="namikarotter-update-close-btn" style="
+            padding: 8px 20px;
+            background: var(--accent, #3b82f6);
+            color: var(--text-white, #ffffff);
+            border: 0;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 150ms ease;
+            outline: none;
+          ">
+            閉じる
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    const closeBtn = popup.querySelector('#namikarotter-update-close-btn');
+    const backdrop = popup.querySelector('.namikarotter-update-backdrop');
+
+    const closePopup = () => {
+      popup.style.opacity = '0';
+      const panel = popup.querySelector('.namikarotter-update-panel');
+      if (panel) panel.style.transform = 'scale(0.96) translateY(8px)';
+      setTimeout(() => popup.remove(), 280);
+    };
+
+    closeBtn.addEventListener('click', closePopup);
+    backdrop.addEventListener('click', closePopup);
+
+    // Trigger animations
+    requestAnimationFrame(() => {
+      popup.style.opacity = '1';
+      popup.style.pointerEvents = 'auto';
+      const panel = popup.querySelector('.namikarotter-update-panel');
+      if (panel) panel.style.transform = 'scale(1) translateY(0)';
+    });
+  }
+
+  function improveHomeUI() {
+    if (!cachedImproveHomeEnable) return;
+
+    let modernHeader = document.querySelector('.namikarotter-modern-home-header');
+
+    // 1. 「TL」ボタンを探す。
+    const tlBtn = Array.from(document.querySelectorAll('button'))
+      .find(b => b.textContent.trim() === 'TL');
+
+    if (!tlBtn) {
+      if (modernHeader) modernHeader.remove();
+      return;
+    }
+
+    // 2. そのTLボタンの親のコンテナの中で、 border-b クラスを持つ最初の div を見つける
+    const originalHeader = tlBtn.closest('div.border-b');
+    if (!originalHeader) {
+      if (modernHeader) modernHeader.remove();
+      return;
+    }
+
+    // originalHeader がすでに新UIであるか、あるいは新UIの子供である場合はスキップ
+    if (originalHeader.classList.contains('namikarotter-modern-home-header') || 
+        originalHeader.hasAttribute('data-namikarotter-modern-header') || 
+        originalHeader.closest('.namikarotter-modern-home-header')) {
+      return;
+    }
+
+    // 3. そのヘッダーに「掲示板」と「ニュース」も含まれているか検証
+    const buttons = Array.from(originalHeader.querySelectorAll('button'));
+    const texts = buttons.map(b => b.textContent.trim());
+    if (!texts.includes('掲示板') || !texts.includes('ニュース')) {
+      if (modernHeader) modernHeader.remove();
+      return;
+    }
+
+    if (originalHeader.style.display !== 'none') {
+      originalHeader.style.setProperty('display', 'none', 'important');
+    }
+
+    if (!modernHeader || originalHeader.nextSibling !== modernHeader) {
+      if (modernHeader) modernHeader.remove();
+      modernHeader = createModernHomeHeader(originalHeader);
+      originalHeader.parentNode.insertBefore(modernHeader, originalHeader.nextSibling);
+    }
+
+    syncHomeUIStates(originalHeader, modernHeader);
+  }
+
+  function createModernHomeHeader(originalHeader) {
+    const header = document.createElement('div');
+    header.className = 'namikarotter-modern-home-header';
+    header.setAttribute('data-namikarotter-modern-header', 'true');
+    header.style.cssText = `
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid var(--border-soft, rgba(148, 163, 184, 0.28));
+      background: var(--surface-elevated, #ffffff);
+      padding: 12px 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform 300ms ease, background-color 150ms ease;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: ${DEFAULT_FONT_STACK};
+    `;
+
+    header.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;">
+        <div style="width: 32px;" data-area="left-space"></div>
+        <div style="flex: 1; display: flex; justify-content: center;">
+          <div style="display: flex; gap: 4px; background: var(--surface-soft, rgba(148, 163, 184, 0.08)); padding: 4px; border-radius: 9999px; border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.12));">
+            <button type="button" data-name="TL" style="
+              padding: 6px 18px; font-size: 13px; font-weight: 600; border-radius: 9999px; border: 0; background: transparent; cursor: pointer; transition: all 150ms ease; color: var(--text-secondary); outline: none;
+            ">TL</button>
+            <button type="button" data-name="掲示板" style="
+              padding: 6px 18px; font-size: 13px; font-weight: 600; border-radius: 9999px; border: 0; background: transparent; cursor: pointer; transition: all 150ms ease; color: var(--text-secondary); outline: none;
+            ">掲示板</button>
+            <button type="button" data-name="ニュース" style="
+              padding: 6px 18px; font-size: 13px; font-weight: 600; border-radius: 9999px; border: 0; background: transparent; cursor: pointer; transition: all 150ms ease; color: var(--text-secondary); outline: none;
+            ">ニュース</button>
+          </div>
+        </div>
+        <div data-area="right-action" style="display: inline-flex; align-items: center;"></div>
+      </div>
+
+      <div class="namikarotter-home-subtabs" style="
+        display: none; justify-content: center; gap: 16px; border-top: 1px solid var(--border-soft, rgba(148, 163, 184, 0.15)); padding-top: 8px; width: 100%; overflow-x: auto; white-space: nowrap;
+      "></div>
+
+      <div class="namikarotter-home-subsubtabs" style="
+        display: none; justify-content: center; gap: 10px; border-top: 1px dashed var(--border-soft, rgba(148, 163, 184, 0.12)); padding-top: 6px; width: 100%; overflow-x: auto; white-space: nowrap;
+      "></div>
+    `;
+
+    const addHoverEffect = (btn, normalColor, hoverBg) => {
+      btn.addEventListener('mouseenter', () => {
+        if (!btn.classList.contains('is-active')) {
+          btn.style.background = hoverBg;
+          btn.style.color = 'var(--text-primary)';
+        }
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (!btn.classList.contains('is-active')) {
+          btn.style.background = 'transparent';
+          btn.style.color = normalColor;
+        }
+      });
+    };
+
+    const mainButtons = header.querySelectorAll('[data-name="TL"], [data-name="掲示板"], [data-name="ニュース"]');
+    mainButtons.forEach(btn => addHoverEffect(btn, 'var(--text-secondary)', 'rgba(148, 163, 184, 0.08)'));
+
+    const bindClick = (btnSelector, origSelectorText) => {
+      const btn = header.querySelector(btnSelector);
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const origButtons = Array.from(originalHeader.querySelectorAll('button'));
+          const origBtn = origButtons.find(b => b.textContent.trim().startsWith(origSelectorText));
+          if (origBtn) origBtn.click();
+        });
+      }
+    };
+
+    bindClick('[data-name="TL"]', 'TL');
+    bindClick('[data-name="掲示板"]', '掲示板');
+    bindClick('[data-name="ニュース"]', 'ニュース');
+
+    return header;
+  }
+
+  function syncHomeUIStates(originalHeader, modernHeader) {
+    const allButtons = Array.from(originalHeader.querySelectorAll('button'));
+    const mainTabNames = ['TL', '掲示板', 'ニュース'];
+
+    const isBtnActive = (btn) => {
+      const classStr = btn.className || '';
+      const styleStr = btn.getAttribute('style') || '';
+      return classStr.includes('text-[var(--accent)]') || 
+             classStr.includes('border-[var(--accent)]') ||
+             classStr.includes('text-blue-') ||
+             classStr.includes('border-blue-') ||
+             classStr.includes('bg-[var(--surface-card)]') || 
+             classStr.includes('shadow-sm') || 
+             styleStr.includes('var(--accent)');
+    };
+
+    // メインタブの同期
+    mainTabNames.forEach(name => {
+      const mBtn = modernHeader.querySelector(`[data-name="${name}"]`);
+      const origBtn = allButtons.find(b => b.textContent.trim().startsWith(name));
+      if (mBtn && origBtn) {
+        const active = isBtnActive(origBtn);
+        mBtn.classList.toggle('is-active', active);
+        if (active) {
+          mBtn.style.background = 'var(--accent, #3b82f6)';
+          mBtn.style.color = 'var(--text-white, #ffffff)';
+          mBtn.style.fontWeight = '700';
+          mBtn.style.boxShadow = '0 2px 6px rgba(59, 130, 246, 0.15)';
+        } else {
+          mBtn.style.background = 'transparent';
+          mBtn.style.color = 'var(--text-secondary)';
+          mBtn.style.fontWeight = '600';
+          mBtn.style.boxShadow = 'none';
+        }
+      }
+    });
+
+    // 大カテゴリ以外のボタンを抽出
+    const otherButtons = allButtons.filter(b => {
+      const text = b.textContent.trim().replace(/試験中$/, '').trim();
+      return !mainTabNames.includes(text) && 
+             !b.closest('.justify-self-end') && 
+             !b.closest('.justify-end') && 
+             !b.hasAttribute('title') && 
+             !b.hasAttribute('aria-label');
+    });
+
+    // 親要素でグループ分け
+    const groups = [];
+    otherButtons.forEach(btn => {
+      const parent = btn.parentElement;
+      let group = groups.find(g => g.parent === parent);
+      if (!group) {
+        group = { parent: parent, buttons: [] };
+        groups.push(group);
+      }
+      group.buttons.push(btn);
+    });
+
+    // サブタブ（中カテゴリ）の同期
+    const subContainer = modernHeader.querySelector('.namikarotter-home-subtabs');
+    renderDynamicTabs(subContainer, groups[0] ? groups[0].buttons : [], 'sub');
+
+    // サブサブタブ（小カテゴリ / ニュースカテゴリ）の同期
+    const subsubContainer = modernHeader.querySelector('.namikarotter-home-subsubtabs');
+    renderDynamicTabs(subsubContainer, groups[1] ? groups[1].buttons : [], 'subsub');
+
+    // 右端アクションボタンの同期
+    const origRightBtn = originalHeader.querySelector('.justify-end button, .justify-self-end button, button.justify-self-end');
+    const rightActionContainer = modernHeader.querySelector('[data-area="right-action"]');
+    if (origRightBtn && rightActionContainer) {
+      rightActionContainer.style.display = 'inline-flex';
+      
+      let modernRightBtn = rightActionContainer.querySelector('button');
+      if (!modernRightBtn) {
+        modernRightBtn = document.createElement('button');
+        modernRightBtn.type = 'button';
+        rightActionContainer.appendChild(modernRightBtn);
+        
+        modernRightBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const targetBtn = originalHeader.querySelector('.justify-end button, .justify-self-end button, button.justify-self-end');
+          if (targetBtn) targetBtn.click();
+        });
+      }
+
+      modernRightBtn.className = origRightBtn.className;
+      modernRightBtn.style.cssText = origRightBtn.style.cssText + '; cursor: pointer; outline: none; transition: all 150ms ease;';
+      modernRightBtn.setAttribute('title', origRightBtn.getAttribute('title') || '');
+      modernRightBtn.setAttribute('aria-label', origRightBtn.getAttribute('aria-label') || '');
+      
+      if (modernRightBtn.innerHTML !== origRightBtn.innerHTML) {
+        modernRightBtn.innerHTML = origRightBtn.innerHTML;
+      }
+
+      modernRightBtn.disabled = origRightBtn.disabled;
+
+      const isSpinning = origRightBtn.querySelector('svg.animate-spin') || origRightBtn.className.includes('spin') || origRightBtn.innerHTML.includes('spin');
+      const svg = modernRightBtn.querySelector('svg');
+      if (svg) {
+        if (isSpinning) {
+          svg.style.animation = 'namiSpin 1s linear infinite';
+        } else {
+          svg.style.animation = 'none';
+        }
+      }
+    } else if (rightActionContainer) {
+      rightActionContainer.style.display = 'none';
+      rightActionContainer.innerHTML = '';
+    }
+
+    if (!document.getElementById('namikarotter-home-spin-style')) {
+      const style = document.createElement('style');
+      style.id = 'namikarotter-home-spin-style';
+      style.textContent = `
+        @keyframes namiSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  function renderDynamicTabs(container, origButtons, type) {
+    if (!container) return;
+
+    if (origButtons.length === 0) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    const origParent = origButtons[0].parentElement;
+    const isGrid = origParent && (origParent.className.includes('grid') || window.getComputedStyle(origParent).display === 'grid');
+
+    if (origParent) {
+      container.className = origParent.className + ' namikarotter-home-' + type + 'tabs';
+      let baseStyle = origParent.style.cssText || '';
+      if (!baseStyle.includes('display:')) {
+        baseStyle += `; display: ${isGrid ? 'grid' : 'flex'} !important;`;
+      } else {
+        baseStyle = baseStyle.replace(/display:\s*none/g, isGrid ? 'display: grid' : 'display: flex');
+      }
+
+      if (type === 'sub' && isGrid) {
+        container.style.cssText = baseStyle + `
+          max-width: 100%;
+          box-sizing: border-box;
+          background: var(--surface-soft, rgba(148, 163, 184, 0.05)) !important;
+          padding: 3px !important;
+          border-radius: 8px !important;
+          border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.15)) !important;
+          gap: 2px !important;
+        `;
+      } else {
+        container.style.cssText = baseStyle + `
+          max-width: 100%;
+          box-sizing: border-box;
+          gap: 6px !important;
+          padding: 2px 0 !important;
+        `;
+      }
+    } else {
+      container.style.display = 'flex';
+      container.style.gap = '6px';
+    }
+
+    if (!document.getElementById('namikarotter-scroll-style')) {
+      const scrollStyle = document.createElement('style');
+      scrollStyle.id = 'namikarotter-scroll-style';
+      scrollStyle.textContent = `
+        .namikarotter-home-subtabs::-webkit-scrollbar,
+        .namikarotter-home-subsubtabs::-webkit-scrollbar {
+          display: none !important;
+        }
+        .namikarotter-home-subtabs,
+        .namikarotter-home-subsubtabs {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+      `;
+      document.head.appendChild(scrollStyle);
+    }
+
+    const currentButtons = Array.from(container.querySelectorAll('button'));
+    const matches = currentButtons.length === origButtons.length && 
+                    currentButtons.every((btn, idx) => btn.textContent.trim().startsWith(origButtons[idx].textContent.trim().substring(0, 3)));
+
+    if (!matches) {
+      container.innerHTML = '';
+      origButtons.forEach((origBtn, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = origBtn.innerHTML;
+        
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          origButtons[idx].click();
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    const newButtons = Array.from(container.querySelectorAll('button'));
+    newButtons.forEach((btn, idx) => {
+      const origBtn = origButtons[idx];
+      if (!origBtn) return;
+
+      const classStr = origBtn.className || '';
+      const styleStr = origBtn.getAttribute('style') || '';
+      const active = classStr.includes('text-[var(--accent)]') || 
+                     classStr.includes('border-[var(--accent)]') ||
+                     classStr.includes('text-blue-') ||
+                     classStr.includes('border-blue-') ||
+                     classStr.includes('bg-[var(--surface-card)]') || 
+                     classStr.includes('shadow-sm') || 
+                     styleStr.includes('var(--accent)');
+
+      if (type === 'sub' && isGrid) {
+        btn.className = classStr.replace(/\bborder-b-2\b/g, '').replace(/\bborder-transparent\b/g, '').replace(/\bborder-\[var\(--accent\)\].*/g, '');
+        btn.style.cssText = `
+          padding: 6px 12px !important;
+          font-size: 13px !important;
+          font-weight: ${active ? '700' : '600'} !important;
+          border: 0 !important;
+          border-radius: 6px !important;
+          background: ${active ? 'var(--surface-card, #ffffff)' : 'transparent'} !important;
+          color: ${active ? 'var(--accent, #3b82f6)' : 'var(--text-muted)'} !important;
+          box-shadow: ${active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'} !important;
+          cursor: pointer !important;
+          outline: none !important;
+          transition: all 150ms ease !important;
+          white-space: nowrap !important;
+          text-align: center !important;
+          flex: 1 !important;
+        `;
+        
+        btn.addEventListener('mouseenter', () => {
+          if (!active) btn.style.color = 'var(--text-secondary)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          if (!active) btn.style.color = 'var(--text-muted)';
+        });
+      } else {
+        btn.className = classStr.replace(/\bborder-b-2\b/g, '').replace(/\bborder-transparent\b/g, '').replace(/\bborder-\[var\(--accent\)\].*/g, '');
+        btn.style.cssText = `
+          padding: 5px 12px !important;
+          font-size: 12px !important;
+          font-weight: ${active ? '700' : '500'} !important;
+          border: 1px solid ${active ? 'var(--accent-soft, rgba(59, 130, 246, 0.12))' : 'var(--border-soft, rgba(148, 163, 184, 0.15))'} !important;
+          border-radius: 9999px !important;
+          background: ${active ? 'var(--accent-soft, rgba(59, 130, 246, 0.1))' : 'var(--surface-soft, rgba(148, 163, 184, 0.04))'} !important;
+          color: ${active ? 'var(--accent, #3b82f6)' : 'var(--text-secondary)'} !important;
+          cursor: pointer !important;
+          outline: none !important;
+          transition: all 150ms ease !important;
+          white-space: nowrap !important;
+        `;
+
+        btn.addEventListener('mouseenter', () => {
+          if (!active) {
+            btn.style.background = 'var(--surface-card, #ffffff)';
+            btn.style.borderColor = 'var(--border-soft, rgba(148, 163, 184, 0.25))';
+            btn.style.color = 'var(--text-primary)';
+          }
+        });
+        btn.addEventListener('mouseleave', () => {
+          if (!active) {
+            btn.style.background = 'var(--surface-soft, rgba(148, 163, 184, 0.04))';
+            btn.style.borderColor = 'var(--border-soft, rgba(148, 163, 184, 0.15))';
+            btn.style.color = 'var(--text-secondary)';
+          }
+        });
+      }
+
+      btn.disabled = origBtn.disabled;
+    });
+  }
+
+  function restoreOriginalHomeUI() {
+    const modernHeaders = document.querySelectorAll('.namikarotter-modern-home-header');
+    modernHeaders.forEach(el => el.remove());
+
+    const originalHeaders = Array.from(document.querySelectorAll('div.border-b'))
+      .filter(el => {
+        const buttons = Array.from(el.querySelectorAll('button'));
+        const texts = buttons.map(b => b.textContent.trim());
+        return texts.includes('TL') && texts.includes('掲示板') && texts.includes('ニュース');
+      });
+
+    originalHeaders.forEach(el => {
+      el.style.removeProperty('display');
+    });
+  }
+
+  function checkAndShowUpdatePopup() {
+    const CURRENT_VERSION = '0.2.2';
+    chrome.storage.local.get(['lastShownUpdateVersion'], (data) => {
+      const lastVersion = data.lastShownUpdateVersion;
+      if (lastVersion !== CURRENT_VERSION) {
+        setTimeout(() => {
+          showUpdatePopup(CURRENT_VERSION);
+        }, 800);
+        chrome.storage.local.set({ lastShownUpdateVersion: CURRENT_VERSION });
+      }
+    });
+  }
+
+  checkAndShowUpdatePopup();
   startNamiNavigationWatcher();
 })();

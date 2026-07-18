@@ -1,6 +1,7 @@
 (function () {
   let hideUiObserver = null;
   let sidebarCollapseObserver = null;
+  let surfaceShadowObserver = null;
 
   function startHideUiObserver(hideUiEnable, hideQr, hideCopyUrl) {
     if (hideUiObserver) {
@@ -1052,6 +1053,263 @@
     });
   }
 
+  let kbotAssistantObserver = null;
+  let kbotAssistantEnabled = false;
+
+  function startKbotAssistant(enabled) {
+    kbotAssistantEnabled = !!enabled;
+    if (kbotAssistantObserver) {
+      kbotAssistantObserver.disconnect();
+      kbotAssistantObserver = null;
+    }
+
+    if (!kbotAssistantEnabled) {
+      document.querySelectorAll('.namikarotter-kbot-assistant').forEach(el => el.remove());
+      return;
+    }
+
+    const insertKbotText = (textarea, textToInsert) => {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentText = textarea.value;
+      
+      const before = currentText.substring(0, start);
+      const after = currentText.substring(end);
+      
+      textarea.value = before + textToInsert + after;
+      textarea.focus();
+      const newCursorPos = start + textToInsert.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const processKbotComposer = () => {
+      const textareas = document.querySelectorAll('.karotter-composer-textarea');
+      textareas.forEach(textarea => {
+        const container = textarea.parentElement;
+        if (!container) return;
+
+        // Check if kbot assistant is already injected
+        if (container.nextElementSibling && (
+          container.nextElementSibling.classList.contains('namikarotter-kbot-assistant') ||
+          (container.nextElementSibling.nextElementSibling && container.nextElementSibling.nextElementSibling.classList.contains('namikarotter-kbot-assistant'))
+        )) {
+          return;
+        }
+
+        let insertAfterTarget = container;
+        if (container.nextElementSibling && container.nextElementSibling.classList.contains('namikarotter-markdown-assistant')) {
+          insertAfterTarget = container.nextElementSibling;
+        }
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'namikarotter-kbot-assistant';
+        toolbar.style.cssText = `
+          display: flex;
+          flex-direction: column;
+          margin-top: 8px;
+          margin-bottom: 8px;
+          user-select: none;
+        `;
+
+        toolbar.innerHTML = `
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b); margin-right: 4px; display: inline-flex; align-items: center; gap: 4px;">
+              kbotアシスタント:
+            </span>
+            
+            <button type="button" class="namikarotter-kbot-tab-btn" data-target="vs" style="background: var(--surface-soft, #f1f5f9); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22)); color: var(--text-secondary, #475569); border-radius: 9999px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 150ms ease; outline: none; display: inline-flex; align-items: center; gap: 4px;">
+              👤 VS比較
+            </button>
+            
+            <button type="button" class="namikarotter-kbot-tab-btn" data-target="rank-range" style="background: var(--surface-soft, #f1f5f9); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22)); color: var(--text-secondary, #475569); border-radius: 9999px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 150ms ease; outline: none; display: inline-flex; align-items: center; gap: 4px;">
+              📊 範囲順位
+            </button>
+            
+            <button type="button" class="namikarotter-kbot-tab-btn" data-target="rank-period" style="background: var(--surface-soft, #f1f5f9); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.22)); color: var(--text-secondary, #475569); border-radius: 9999px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 150ms ease; outline: none; display: inline-flex; align-items: center; gap: 4px;">
+              📅 期間ランキング
+            </button>
+          </div>
+          
+          <!-- VS比較 Drawer -->
+          <div class="namikarotter-kbot-drawer" data-drawer="vs" style="display: none; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding: 8px 12px; background: var(--surface-soft, rgba(148, 163, 184, 0.05)); border: 1px dashed var(--border-soft, rgba(148, 163, 184, 0.22)); border-radius: 8px; width: 100%; box-sizing: border-box;">
+            <input type="text" placeholder="ユーザーA" class="namikarotter-kbot-input-usera" style="background: var(--surface-card, #ffffff); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); color: var(--text-primary); border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100px; outline: none;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">vs</span>
+            <input type="text" placeholder="ユーザーB" class="namikarotter-kbot-input-userb" style="background: var(--surface-card, #ffffff); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); color: var(--text-primary); border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100px; outline: none;">
+            <button type="button" class="namikarotter-kbot-insert-btn" style="background: var(--accent, #3b82f6); color: #ffffff; border: none; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; margin-left: auto; outline: none; transition: background-color 150ms ease;">挿入</button>
+          </div>
+          
+          <!-- 範囲順位 Drawer -->
+          <div class="namikarotter-kbot-drawer" data-drawer="rank-range" style="display: none; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding: 8px 12px; background: var(--surface-soft, rgba(148, 163, 184, 0.05)); border: 1px dashed var(--border-soft, rgba(148, 163, 184, 0.22)); border-radius: 8px; width: 100%; box-sizing: border-box;">
+            <select class="namikarotter-kbot-select-type" style="background: var(--surface-card, #ffffff); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); color: var(--text-primary); border-radius: 6px; padding: 4px 8px; font-size: 12px; outline: none;">
+              <option value="rps">投稿数ランキング (rps)</option>
+              <option value="rflw">フォロワーランキング (rflw)</option>
+            </select>
+            <input type="number" value="11" min="1" class="namikarotter-kbot-input-start" style="background: var(--surface-card, #ffffff); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); color: var(--text-primary); border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 60px; outline: none;">
+            <span style="font-size: 12px; color: var(--text-secondary);">〜</span>
+            <input type="number" value="20" min="1" class="namikarotter-kbot-input-end" style="background: var(--surface-card, #ffffff); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); color: var(--text-primary); border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 60px; outline: none;">
+            <span style="font-size: 11px; color: var(--text-muted, #64748b); margin-left: 4px;">(範囲: 2〜15以内)</span>
+            <button type="button" class="namikarotter-kbot-insert-btn" style="background: var(--accent, #3b82f6); color: #ffffff; border: none; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; margin-left: auto; outline: none; transition: background-color 150ms ease;">挿入</button>
+          </div>
+          
+          <!-- 期間ランキング Drawer -->
+          <div class="namikarotter-kbot-drawer" data-drawer="rank-period" style="display: none; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding: 8px 12px; background: var(--surface-soft, rgba(148, 163, 184, 0.05)); border: 1px dashed var(--border-soft, rgba(148, 163, 184, 0.22)); border-radius: 8px; width: 100%; box-sizing: border-box;">
+            <select class="namikarotter-kbot-select-period-type" style="background: var(--surface-card, #ffffff); border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.3)); color: var(--text-primary); border-radius: 6px; padding: 4px 8px; font-size: 12px; outline: none;">
+              <option value="rps day">【日間】投稿数ランキング (rps day)</option>
+              <option value="rps week">【週間】投稿数ランキング (rps week)</option>
+              <option value="rflw day">【日間】フォロワー数ランキング (rflw day)</option>
+              <option value="rflw week">【週間】フォロワー数ランキング (rflw week)</option>
+              <option value="rrt day">【日間】レート変動ランキング (rrt day)</option>
+              <option value="rrt week">【週間】レート変動ランキング (rrt week)</option>
+            </select>
+            <button type="button" class="namikarotter-kbot-insert-btn" style="background: var(--accent, #3b82f6); color: #ffffff; border: none; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; margin-left: auto; outline: none; transition: background-color 150ms ease;">挿入</button>
+          </div>
+        `;
+
+        const tabs = toolbar.querySelectorAll('.namikarotter-kbot-tab-btn');
+        const drawers = toolbar.querySelectorAll('.namikarotter-kbot-drawer');
+
+        tabs.forEach(tab => {
+          tab.addEventListener('mouseenter', () => {
+            if (!tab.classList.contains('namikarotter-active')) {
+              tab.style.backgroundColor = 'var(--accent-soft, rgba(59, 130, 246, 0.12))';
+              tab.style.color = 'var(--accent, #3b82f6)';
+            }
+          });
+          tab.addEventListener('mouseleave', () => {
+            if (!tab.classList.contains('namikarotter-active')) {
+              tab.style.backgroundColor = 'var(--surface-soft, #f1f5f9)';
+              tab.style.color = 'var(--text-secondary, #475569)';
+            }
+          });
+          tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const target = tab.getAttribute('data-target');
+            const targetDrawer = toolbar.querySelector(`.namikarotter-kbot-drawer[data-drawer="${target}"]`);
+            const isCurrentlyOpen = targetDrawer.style.display === 'flex';
+
+            // Close all drawers
+            drawers.forEach(d => d.style.display = 'none');
+            tabs.forEach(t => {
+              t.classList.remove('namikarotter-active');
+              t.style.backgroundColor = 'var(--surface-soft, #f1f5f9)';
+              t.style.color = 'var(--text-secondary, #475569)';
+              t.style.borderColor = 'var(--border-soft, rgba(148, 163, 184, 0.22))';
+            });
+
+            if (!isCurrentlyOpen) {
+              tab.classList.add('namikarotter-active');
+              tab.style.backgroundColor = 'var(--accent, #3b82f6)';
+              tab.style.color = '#ffffff';
+              tab.style.borderColor = 'var(--accent, #3b82f6)';
+              targetDrawer.style.display = 'flex';
+            }
+          });
+        });
+
+        // Set up insert actions
+        drawers.forEach(drawer => {
+          const drawerType = drawer.getAttribute('data-drawer');
+          const insertBtn = drawer.querySelector('.namikarotter-kbot-insert-btn');
+          
+          insertBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (drawerType === 'vs') {
+              const userA = (drawer.querySelector('.namikarotter-kbot-input-usera').value || '').trim();
+              const userB = (drawer.querySelector('.namikarotter-kbot-input-userb').value || '').trim();
+              if (!userA || !userB) {
+                alert('両方のユーザー名を入力してください。');
+                return;
+              }
+              insertKbotText(textarea, `@kbot ${userA} vs ${userB} `);
+            } else if (drawerType === 'rank-range') {
+              const start = parseInt(drawer.querySelector('.namikarotter-kbot-input-start').value, 10);
+              const end = parseInt(drawer.querySelector('.namikarotter-kbot-input-end').value, 10);
+              if (isNaN(start) || isNaN(end)) {
+                alert('順位を数字で入力してください。');
+                return;
+              }
+              const range = Math.abs(end - start) + 1;
+              if (range < 2 || range > 15) {
+                alert('順位の表示範囲は2〜15位の間で指定してください。 (例: 11-20)');
+                return;
+              }
+              const rankType = drawer.querySelector('.namikarotter-kbot-select-type').value;
+              const minRank = Math.min(start, end);
+              const maxRank = Math.max(start, end);
+              insertKbotText(textarea, `@kbot ${rankType} ${minRank}-${maxRank} `);
+            } else if (drawerType === 'rank-period') {
+              const val = drawer.querySelector('.namikarotter-kbot-select-period-type').value;
+              insertKbotText(textarea, `@kbot ${val} `);
+            }
+
+            // Collapse drawer after inserting
+            drawer.style.display = 'none';
+            tabs.forEach(t => {
+              t.classList.remove('namikarotter-active');
+              t.style.backgroundColor = 'var(--surface-soft, #f1f5f9)';
+              t.style.color = 'var(--text-secondary, #475569)';
+              t.style.borderColor = 'var(--border-soft, rgba(148, 163, 184, 0.22))';
+            });
+          });
+        });
+
+        insertAfterTarget.insertAdjacentElement('afterend', toolbar);
+      });
+    };
+
+    processKbotComposer();
+    kbotAssistantObserver = new MutationObserver(processKbotComposer);
+    kbotAssistantObserver.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  function startSurfaceShadowObserver() {
+    if (surfaceShadowObserver) {
+      surfaceShadowObserver.disconnect();
+      surfaceShadowObserver = null;
+    }
+
+    const checkElements = () => {
+      const containers = document.querySelectorAll('.shadow-\\[var\\(--surface-shadow\\)\\]');
+      containers.forEach(container => {
+        const divs = container.querySelectorAll('div');
+        let hasCurrent = false;
+        for (const div of divs) {
+          if (div.textContent.trim() === '現在') {
+            hasCurrent = true;
+            break;
+          }
+        }
+        if (hasCurrent) {
+          if (container.getAttribute('data-namikarotter-has-current') !== 'true') {
+            container.setAttribute('data-namikarotter-has-current', 'true');
+          }
+        } else {
+          if (container.getAttribute('data-namikarotter-has-current') === 'true') {
+            container.removeAttribute('data-namikarotter-has-current');
+          }
+        }
+      });
+    };
+
+    checkElements();
+
+    surfaceShadowObserver = new MutationObserver(checkElements);
+    surfaceShadowObserver.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+
   // Expose to window namespace
   window.NamiObservers = {
     startHideUiObserver,
@@ -1059,6 +1317,8 @@
     startImageDownloader,
     startVoiceDownloader,
     startMarkdownAssistant,
-    startPostPreview
+    startPostPreview,
+    startKbotAssistant,
+    startSurfaceShadowObserver
   };
 })();

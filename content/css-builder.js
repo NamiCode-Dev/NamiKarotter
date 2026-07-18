@@ -68,7 +68,7 @@
   }
 
   // Apply styles to document
-  function applyStyles(themeName, customColors, fontName, wallpaper, extensions, customFontUrl, hideVerified, hideBot, hideParody, disableProStyle, hideBadgePill, hideKawaiiLogo) {
+  function applyStyles(themeName, customColors, fontName, wallpaper, extensions, customFontUrl, hideVerified, hideBot, hideParody, disableProStyle, hideBadgePill, hideKawaiiLogo, hideLogo) {
     // 1. Handle Font loading
     loadFont(fontName);
 
@@ -258,7 +258,7 @@ html::before {
 
     // Enforce font-family
     cssText += `
-.shadow-\\[var\\(--surface-shadow\\)\\] {
+.shadow-\\[var\\(--surface-shadow\\)\\][data-namikarotter-has-current="true"] {
   backdrop-filter: blur(5px) !important;
   -webkit-backdrop-filter: blur(5px) !important;
 }
@@ -307,6 +307,7 @@ ${hideBot ? `[title="BOTアカウント"] { display: none !important; }\n` : ''}
 ${hideParody ? `[title="パロディアカウント"] { display: none !important; }\n` : ''}
 ${hideBadgePill ? `.badge-pill { display: none !important; }\n` : ''}
 ${hideKawaiiLogo ? `img[alt="New Logo Karotter"] { display: none !important; }\n` : ''}
+${hideLogo ? `img[alt="Karotter"] { display: none !important; }\n` : ''}
 ${disableProStyle ? `
 /* Disable Pro user decoration styles */
 [style*="border-left"][style*="linear-gradient"] {
