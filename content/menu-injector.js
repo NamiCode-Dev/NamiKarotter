@@ -2014,7 +2014,7 @@
   }
 
   function checkAndShowUpdatePopup() {
-    const CURRENT_VERSION = '0.2.2';
+    const CURRENT_VERSION = '0.2.3';
     chrome.storage.local.get(['lastShownUpdateVersion'], (data) => {
       const lastVersion = data.lastShownUpdateVersion;
       if (lastVersion !== CURRENT_VERSION) {
