@@ -508,7 +508,10 @@
       const isEnabled = data.pluginAdvancedSearchEnable !== false;
       
       const inputs = Array.from(document.querySelectorAll('input[placeholder*="検索"], input[placeholder*="search"], input[placeholder*="Search"]'))
-        .filter(input => input.placeholder !== 'ユーザーネームで検索' && !input.placeholder.includes('ユーザーネームで検索'));
+        .filter(input => {
+          const p = input.placeholder || '';
+          return !p.includes('ユーザーネームで検索') && !p.includes('板を検索');
+        });
       
       if (!isEnabled) {
         document.querySelectorAll('.namikarotter-adv-search-btn').forEach(btn => btn.remove());
@@ -516,6 +519,19 @@
         if (existingPopup) existingPopup.remove();
         return;
       }
+
+      // 除外対象の入力欄から既存のボタンがあれば削除する
+      const excludedInputs = Array.from(document.querySelectorAll('input'))
+        .filter(input => {
+          const p = input.placeholder || '';
+          return p.includes('ユーザーネームで検索') || p.includes('板を検索');
+        });
+      excludedInputs.forEach(input => {
+        const parent = input.parentElement;
+        if (parent) {
+          parent.querySelectorAll('.namikarotter-adv-search-btn').forEach(btn => btn.remove());
+        }
+      });
 
       inputs.forEach(input => {
         const parent = input.parentElement;
@@ -1486,45 +1502,16 @@
           line-height: 1.6;
         ">
           <div>
-            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・KarotterTLine 埋め込み機能</h4>
+            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・板画面でのヘッダー表示バグ修正</h4>
             <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
-              ポストの共有メニューに「KarotterTLine」ボタンを追加し、ウィジェット埋め込みコードのコピー機能と、実際のウィジェット表示を確認できるライブプレビュー（初回のみ確認用ダイアログ表示）を提供します。
-            </p>
-          </div>
-
-          <div>
-            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・kbotアシスタント プラグイン</h4>
-            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
-              投稿ポップアップに「@kbot」コマンドの入力支援機能を追加しました。VS比較、指定範囲順位（バリデーション機能付き）、期間ランキングを簡単に挿入できます。
-            </p>
-          </div>
-
-
-          <div>
-            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・ホームのヘッダー・タブを改良</h4>
-            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
-              ホーム画面の複雑な大・中・小カテゴリタブを、スッキリと階層的で使いやすいモダンなUIに自動で置き換える機能を追加しました。
-            </p>
-          </div>
-
-          <div>
-            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・要素非表示プラグインの拡張</h4>
-            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
-              特定の画面要素の非表示設定に「ロゴ（alt="Karotter"）」の非表示項目を追加しました。
-            </p>
-          </div>
-
-          <div>
-            <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・20個のシンプルなテーマプリセット</h4>
-            <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
-              落ち着きのあるミニマルなデザインをベースにした、美しいシンプル系テーマプリセットを新たに20種類追加しました。
+              板画面のヘッダーがホームヘッダーと誤判定されて置き換わり、板名や「スレ立て」「板をフォロー」などの各種ボタンが表示されなくなる不具合を修正しました。
             </p>
           </div>
 
           <div>
             <h4 style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">・高度な検索機能の改善</h4>
             <p style="margin: 0 0 0 10px; font-size: 12.5px; color: var(--text-secondary, #475569);">
-              「ユーザーネームで検索」など、個人の検索エリア等に誤って高度な検索ボタンが挿入されないよう最適化しました。
+              「ユーザーネームで検索」に加えて「板を検索」の入力欄に対しても、高度な検索ボタンが誤って挿入されないよう除外処理を改善しました。
             </p>
           </div>
         </div>
@@ -1615,6 +1602,33 @@
       return;
     }
 
+    // 板ヘッダー（「板をフォロー」「板一覧へ戻る」「スレ立てフォームを開く」などのボタンを持つもの）であれば、ホームヘッダーではないのでスキップする
+    const hasBoardButtons = buttons.some(b => {
+      const aria = b.getAttribute('aria-label') || '';
+      const title = b.getAttribute('title') || '';
+      return aria.includes('板をフォロー') || aria.includes('板一覧') || aria.includes('スレ立て') ||
+             title.includes('板をフォロー') || title.includes('板一覧') || title.includes('スレ立て');
+    });
+    if (hasBoardButtons) {
+      if (modernHeader) modernHeader.remove();
+      if (originalHeader.style.display === 'none') {
+        originalHeader.style.removeProperty('display');
+      }
+      return;
+    }
+
+    // 板作成フォームなどが originalHeader 内に展開されている場合は、一時的にオリジナルを表示する
+    const hasForm = !!originalHeader.querySelector('form');
+    if (hasForm) {
+      if (originalHeader.style.display === 'none') {
+        originalHeader.style.removeProperty('display');
+      }
+      if (modernHeader) {
+        modernHeader.style.display = 'none';
+      }
+      return;
+    }
+
     if (originalHeader.style.display !== 'none') {
       originalHeader.style.setProperty('display', 'none', 'important');
     }
@@ -1623,6 +1637,8 @@
       if (modernHeader) modernHeader.remove();
       modernHeader = createModernHomeHeader(originalHeader);
       originalHeader.parentNode.insertBefore(modernHeader, originalHeader.nextSibling);
+    } else if (modernHeader.style.display === 'none') {
+      modernHeader.style.display = 'flex';
     }
 
     syncHomeUIStates(originalHeader, modernHeader);
@@ -2014,7 +2030,7 @@
   }
 
   function checkAndShowUpdatePopup() {
-    const CURRENT_VERSION = '0.2.3';
+    const CURRENT_VERSION = '0.2.4';
     chrome.storage.local.get(['lastShownUpdateVersion'], (data) => {
       const lastVersion = data.lastShownUpdateVersion;
       if (lastVersion !== CURRENT_VERSION) {
