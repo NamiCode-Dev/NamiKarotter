@@ -490,7 +490,7 @@
  <div style="display:flex; flex:1; align-items:center; justify-content:center; padding:24px; text-align:center; color:var(--text-secondary, #475569); line-height:1.7;">
    <div>
      <div style="margin-bottom:8px; font-weight:700; color:var(--text-primary, #0f172a); font-size:16px;">NamiKarotter</div>
-     <div style="font-size:13px; margin-bottom:16px;">バージョン 0.2.2</div>
+     <div style="font-size:13px; margin-bottom:16px;">バージョン 0.2.4</div>
      <div style="font-weight:600; font-size:13px; color:var(--text-primary, #0f172a); margin-bottom:4px;">開発者: NamiCode (Developer)</div>
      <div class="dev-links">
        <a href="https://github.com/NamiCode-Dev" target="_blank" rel="noopener noreferrer">GitHub</a> &nbsp;·&nbsp;
