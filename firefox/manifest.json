@@ -3,13 +3,21 @@
   "name": "NamiKarotter",
   "version": "0.2.5",
   "description": "Karotterのカラーテーマやフォント、壁紙のカスタムに加え、要素非表示、高度な検索、サイドバー折りたたみ、メディア保存などの便利機能を追加するカスタマイズ拡張機能。",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "namikarotter@extension",
+      "strict_min_version": "109.0"
+    }
+  },
   "permissions": [
     "storage",
     "unlimitedStorage",
     "downloads"
   ],
   "background": {
-    "service_worker": "background.js"
+    "scripts": [
+      "background.js"
+    ]
   },
   "action": {
     "default_icon": {
